@@ -62,32 +62,39 @@ def plot_points(map_view,gf_pick,gf_drop):
 
 def plot_edge(map_view,gf_pick,gf_drop):
     type_color = ["green","skyblue","orange", "pink","silver","maroon","olive"]
-    for i in range(gf_pick.shape[0]):
-        hi = [(gf_pick.geometry[i].y,gf_pick.geometry[i].x)]
-        hi.append((gf_drop.geometry[i].y,gf_drop.geometry[i].x))
-        print(str(gf_pick.geometry[i])+' --> ' + str(gf_drop.geometry[i]))
+    for i in range(tb_pick.shape[0]):
+        hi = [(tb_pick.geometry[i].y,tb_pick.geometry[i].x)]
+        hi.append((tb_drop.geometry[i].y,tb_drop.geometry[i].x))
+        print(str(tb_pick.geometry[i])+' --> ' + str(tb_drop.geometry[i]))
         folium.PolyLine(hi,
                         color=type_color[i%9],
                         weight=7,
                         opacity=0.6).add_to(map_view)
         hj = []
-        for j in range(gf_drop.shape[0]):
+        for j in range(tb_drop.shape[0]):
             if i!=j:
-                hj = [(gf_pick.geometry[i].y,gf_pick.geometry[i].x)]
-                hj.append((gf_drop.geometry[j].y,gf_drop.geometry[j].x))
-                print(str(gf_pick.geometry[i])+' --> ' + str(gf_drop.geometry[j]))
+                hj = [(tb_pick.geometry[i].y,tb_pick.geometry[i].x)]
+                hj.append((tb_drop.geometry[j].y,tb_drop.geometry[j].x))
+                print(str(tb_pick.geometry[i])+' --> ' + str(tb_drop.geometry[j]))
                 folium.PolyLine(hj,
-                    color='purple',
+                    color='pink',
                     weight=7,
                     opacity=0.6).add_to(map_view)
-
-        print(str(gf_pick.geometry[i])+' --> ' + str(gf_pick.geometry[(i+1)%gf_pick.shape[0]]))
-        hz = [(gf_pick.geometry[i].y,gf_pick.geometry[i].x)]
-        hz.append((gf_pick.geometry[(i+1)%gf_pick.shape[0]].y,gf_pick.geometry[(i+1)%gf_pick.shape[0]].x))
+        print(str(tb_pick.geometry[i])+' --> ' + str(tb_pick.geometry[(i+1)%tb_pick.shape[0]]))
+        hz = [(tb_pick.geometry[i].y,tb_pick.geometry[i].x)]
+        hz.append((tb_pick.geometry[(i+1)%tb_pick.shape[0]].y,tb_pick.geometry[(i+1)%tb_pick.shape[0]].x))
         folium.PolyLine(hz,
                         color='yellow',
                         weight=7,
                         opacity=0.6).add_to(map_view)
+    for k in range(tb_drop.shape[0]):
+        hk = [(tb_drop.geometry[k].y,tb_drop.geometry[k].x)]
+        hk.append((tb_drop.geometry[(k+1)%tb_drop.shape[0]].y,tb_drop.geometry[(k+1)%tb_drop.shape[0]].x))
+        print(str(tb_drop.geometry[k])+' --> ' + str(tb_drop.geometry[(k+1)%tb_drop.shape[0]]))
+        folium.PolyLine(hk,
+            color='purple',
+            weight=7,
+            opacity=0.6).add_to(map_view)
         
 def distan_matrix(geoPick,geoDrop):
     gpick = geoPick.to_crs('EPSG:5234')
@@ -96,20 +103,22 @@ def distan_matrix(geoPick,geoDrop):
     pick_drop_origin = pick_drop_origin.to_list()
     pick_drop_norigin = []
     pick_pick_origin = []
+    drop_drop_origin = []
     for i in range(gpick.shape[0]):
         for j in range(gdrop.shape[0]):
             if i!=j:
-                # print(str(gpick.geometry[i])+' --> ' + str(gdrop.geometry[j]))
                 pick_drop_norigin.append(gpick.geometry[i].distance(gdrop.geometry[j])/1000)
     for i in range(gpick.shape[0]):
-            #print(str(gpick.geometry[i])+' --> ' + str(gpick.geometry[(i+1)%gpick.shape[0]]))
             pick_pick_origin.append(gpick.geometry[i].distance(gpick.geometry[(i+1)%gpick.shape[0]])/1000)
-            
-    return pick_drop_origin,pick_drop_norigin,pick_pick_origin
+    
+    for i in range(gdrop.shape[0]):
+        drop_drop_origin.append(gdrop.geometry[i].distance(gdrop.geometry[(i+1)%gdrop.shape[0]])/1000)
+    
+    return pick_drop_origin,pick_drop_norigin,pick_pick_origin, drop_drop_origin
 
 
 def graph_points_matrix(g_pick,g_drop):
-    pck_drp , pck_ndrp , pck_pck = distan_matrix(g_pick,g_drop)
+    pck_drp , pck_ndrp , pck_pck, drp_drp = distan_matrix(g_pick,g_drop)
     matrix_graph = np.zeros((6,6))
     r = 0
     for i in range(len(pck_drp)):
@@ -129,11 +138,32 @@ def graph_points_matrix(g_pick,g_drop):
         if i == 0:
             matrix_graph[2][(i%2)] = pck_pck[i]
         else:
-            matrix_graph[4][(i%2)] = pck_pck[i]            
-    return matrix_graph + matrix_graph.T
+            matrix_graph[4][(i%2)] = pck_pck[i]
+    for i in range(len(drp_drp)):
+        if i == 0:
+            matrix_graph[3][i+1] = drp_drp[i]
+        else:
+            matrix_graph[5][(2%(i+1))+1] = drp_drp[i]
+            
+    return matrix_graph + matrix_graph.T 
 
-def graph_points_net(g_pick,g_drop):
-    point_graph = nx.from_numpy_matrix(graph_points_matrix(g_pick,g_drop), create_using=nx.DiGraph())
+def refineZeroPoint(matrix):
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            if i!=j and matrix[i][j]==0:
+                matrix[i][j] = 0.0000001
+
+def get_sub(x): 
+    normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()"
+    sub_s = "ₐ₈CDₑբGₕᵢⱼₖₗₘₙₒₚQᵣₛₜᵤᵥwₓᵧZₐ♭꜀ᑯₑբ₉ₕᵢⱼₖₗₘₙₒₚ૧ᵣₛₜᵤᵥwₓᵧ₂₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎"
+    x = str(x)
+    res = x.maketrans(''.join(normal), ''.join(sub_s)) 
+    return x.translate(res)
+
+def graph_points_net(g_pick,g_drop,spring=False):
+    ady_graph = graph_points_matrix(g_pick,g_drop)
+    refineZeroPoint(ady_graph)
+    point_graph = nx.from_numpy_matrix(ady_graph, create_using=nx.DiGraph())
     label_mapping = {0: f'pick{get_sub(1)}', 
                      1: f'drop{get_sub(1)}', 
                      2: f'pick{get_sub(2)}',
@@ -153,8 +183,11 @@ def graph_points_net(g_pick,g_drop):
     ]
     point_graph = nx.relabel_nodes(point_graph, label_mapping)
     labels = nx.get_edge_attributes(point_graph, "weight")
-    pos = nx.circular_layout(point_graph,scale=10)
-    print(pos)
+    if spring:
+        pos = nx.spring_layout(point_graph,scale=100)
+    else:
+        pos = nx.circular_layout(point_graph,scale=10)
+
     fig, ax = plt.subplots(figsize=(15, 14))
     options = {"edgecolors": "tab:gray", "node_size": 4000, "alpha": 0.9}
     nx.draw(point_graph,pos=pos,**options,arrowsize=20)
