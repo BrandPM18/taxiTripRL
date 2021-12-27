@@ -1,7 +1,6 @@
-import geopandas as gpd
-import numpy as np
-from sqlalchemy import create_engine
+import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 import folium
 
 
@@ -47,55 +46,6 @@ def sql_area(count,offset,id = 0):
         
     return f'SELECT \"AREA_NUMBE\",\"COMMUNITY\",\"geometry\" FROM commun_area {area_num} LIMIT {count} OFFSET {offset}'
 
-def plot_points(map_view,gf_pick,gf_drop):
-    for i in range(gf_pick.shape[0]):
-        map_view.add_child(folium.Marker(location = [gf_pick.geometry[i].y,gf_pick.geometry[i].x],
-                            popup =
-                            "ID: " + str(i)+ '<br>' +
-                            "Community: " + str(gf_pick['Pickup Community Area'][i]) + '<br>',
-                            icon = folium.Icon(color = "blue")))
-        map_view.add_child(folium.Marker(location = [gf_drop.geometry[i].y,gf_drop.geometry[i].x],
-                            popup =
-                            "ID: " + str(i)+ '<br>' +
-                            "Community: " + str(gf_drop['Dropoff Community Area'][i]) + '<br>',
-                            icon = folium.Icon(color = "red")))
-
-def plot_edge(map_view,gf_pick,gf_drop):
-    type_color = ["green","skyblue","orange", "pink","silver","maroon","olive"]
-    for i in range(tb_pick.shape[0]):
-        hi = [(tb_pick.geometry[i].y,tb_pick.geometry[i].x)]
-        hi.append((tb_drop.geometry[i].y,tb_drop.geometry[i].x))
-        print(str(tb_pick.geometry[i])+' --> ' + str(tb_drop.geometry[i]))
-        folium.PolyLine(hi,
-                        color=type_color[i%9],
-                        weight=7,
-                        opacity=0.6).add_to(map_view)
-        hj = []
-        for j in range(tb_drop.shape[0]):
-            if i!=j:
-                hj = [(tb_pick.geometry[i].y,tb_pick.geometry[i].x)]
-                hj.append((tb_drop.geometry[j].y,tb_drop.geometry[j].x))
-                print(str(tb_pick.geometry[i])+' --> ' + str(tb_drop.geometry[j]))
-                folium.PolyLine(hj,
-                    color='pink',
-                    weight=7,
-                    opacity=0.6).add_to(map_view)
-        print(str(tb_pick.geometry[i])+' --> ' + str(tb_pick.geometry[(i+1)%tb_pick.shape[0]]))
-        hz = [(tb_pick.geometry[i].y,tb_pick.geometry[i].x)]
-        hz.append((tb_pick.geometry[(i+1)%tb_pick.shape[0]].y,tb_pick.geometry[(i+1)%tb_pick.shape[0]].x))
-        folium.PolyLine(hz,
-                        color='yellow',
-                        weight=7,
-                        opacity=0.6).add_to(map_view)
-    for k in range(tb_drop.shape[0]):
-        hk = [(tb_drop.geometry[k].y,tb_drop.geometry[k].x)]
-        hk.append((tb_drop.geometry[(k+1)%tb_drop.shape[0]].y,tb_drop.geometry[(k+1)%tb_drop.shape[0]].x))
-        print(str(tb_drop.geometry[k])+' --> ' + str(tb_drop.geometry[(k+1)%tb_drop.shape[0]]))
-        folium.PolyLine(hk,
-            color='purple',
-            weight=7,
-            opacity=0.6).add_to(map_view)
-        
 def distan_matrix(geoPick,geoDrop):
     gpick = geoPick.to_crs('EPSG:5234')
     gdrop = geoDrop.to_crs('EPSG:5234')
@@ -138,7 +88,7 @@ def graph_points_matrix(g_pick,g_drop):
         if i == 0:
             matrix_graph[2][(i%2)] = pck_pck[i]
         else:
-            matrix_graph[4][(i%2)] = pck_pck[i]
+            matrix_graph[4][(i*2)%4] = pck_pck[i]
     for i in range(len(drp_drp)):
         if i == 0:
             matrix_graph[3][i+1] = drp_drp[i]
@@ -151,7 +101,13 @@ def refineZeroPoint(matrix):
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             if i!=j and matrix[i][j]==0:
-                matrix[i][j] = 0.0000001
+                matrix[i][j] = 0.00001
+def cleanDropPick(matrix):
+    r = 0
+    for i in range(3):
+        matrix[i+1+r][i+r] = 0
+        r=r+1
+    return matrix
 
 def get_sub(x): 
     normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()"
@@ -163,6 +119,7 @@ def get_sub(x):
 def graph_points_net(g_pick,g_drop,spring=False):
     ady_graph = graph_points_matrix(g_pick,g_drop)
     refineZeroPoint(ady_graph)
+    ady_graph = cleanDropPick(ady_graph)
     point_graph = nx.from_numpy_matrix(ady_graph, create_using=nx.DiGraph())
     label_mapping = {0: f'pick{get_sub(1)}', 
                      1: f'drop{get_sub(1)}', 
@@ -197,3 +154,13 @@ def graph_points_net(g_pick,g_drop,spring=False):
     nx.draw_networkx_edge_labels(point_graph,pos = pos,edge_labels=labels,font_size=13)
     nx.draw_networkx_labels(point_graph, pos, font_size=20, font_color="whitesmoke")
     plt.show()
+    
+def get_graph_mat(g_pick,g_drop):
+    coords = []
+    for i in range(3):
+        #print("pick")
+        coords.append([g_pick['geometry'][i].x,g_pick['geometry'][i].y])
+        #print("drop")
+        coords.append([g_drop['geometry'][i].x,g_drop['geometry'][i].y])            
+    dist_mat = graph_points_matrix(g_pick,g_drop)
+    return coords, dist_mat
