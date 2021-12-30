@@ -171,13 +171,23 @@ def graph_points_matrix_sec(g_pick,g_drop,sol):
         if i<len(sol)-1:
             sec_vec.append([sol[i],sol[i+1]])
     ady_r = np.zeros((6,6))
+    refineZeroPoint(matrix_graph)
     for k in sec_vec:
         ady_r[k[0]][k[1]] = matrix_graph[k[0]][k[1]]
+    
     return ady_r
 
+def solutionGraph(sol=[],ady_graph=[]):
+    for i in range(ady_graph.shape[0]):
+        for j in range(ady_graph.shape[0]):
+            if i not in sol:
+                ady_graph[i][j]=0
+                ady_graph[j][i]=0
+    return ady_graph
+
 def graph_points_net_2(g_pick,g_drop,sol=[],spring=False):
-    ady_graph = graph_points_matrix_sec(tb_pick,tb_drop,sol)    
-    solutionGraph(sol,ady_graph)
+    ady_graph = graph_points_matrix_sec(g_pick,g_drop,sol)    
+    #solutionGraph2(sol,ady_graph)
     point_graph = nx.from_numpy_matrix(ady_graph, create_using=nx.DiGraph())
     label_mapping = {0: f'pick{get_sub(1)}', 
                      1: f'drop{get_sub(1)}', 
