@@ -1,4 +1,8 @@
 # NoteBook CheckPoints
-!.ipynb.checkpoints/
+.ipynb_checkpoints
+
+# Cache python
+__pycache__
+
 # Csv
 csv
