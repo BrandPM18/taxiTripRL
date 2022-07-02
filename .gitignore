@@ -4,5 +4,9 @@
 # Cache python
 __pycache__
 
+# Runs
+models
+runs
+
 # Csv
 csv
