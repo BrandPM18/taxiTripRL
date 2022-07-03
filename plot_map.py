@@ -14,7 +14,6 @@ def plot_points(map_view,gf_pick,gf_drop):
                             "Community: " + str(gf_drop['Dropoff Community Area'][i]) + '<br>',
                             icon = folium.Icon(color = "red")))
 
-
 def plot_edge(map_view,gf_pick,gf_drop):
     for i in range(gf_pick.shape[0]):
         hi = [(gf_pick.geometry[i].y,gf_pick.geometry[i].x)]
