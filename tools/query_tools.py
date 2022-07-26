@@ -13,7 +13,7 @@ def sql_pickup(count,offset,start='',id = ''):
         query = f'WHERE {trip_id} AND {start_time}'        
     elif it!=0:
         query = f'WHERE {trip_id} {start_time}'
-    return f'SELECT \"Pickup Community Area\",\"geometry\" FROM public.pickup_points {query} LIMIT {count} OFFSET {offset}'
+    return f'SELECT \"Trip ID\",\"Trip Start Timestamp\",\"Pickup Community Area\",\"geometry\" FROM public.pickup_points_r {query} LIMIT {count} OFFSET {offset}'
 
 def sql_dropoff(count,offset,start='',id = ''):
     start_time=''
@@ -31,7 +31,7 @@ def sql_dropoff(count,offset,start='',id = ''):
     elif it!=0:
         query = f'WHERE {trip_id} {start_time}'
 
-    return f'SELECT \"Dropoff Community Area\",\"geometry\" FROM public.dropoff_points  {query} LIMIT {count} OFFSET {offset}'
+    return f'SELECT \"Trip ID\",\"Trip Start Timestamp\",\"Dropoff Community Area\",\"geometry\" FROM public.dropoff_points_r  {query} LIMIT {count} OFFSET {offset}'
 
 def sql_area(count,offset,id = 0):
     area_num = ''

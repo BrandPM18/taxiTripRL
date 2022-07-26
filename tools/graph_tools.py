@@ -1,14 +1,24 @@
 import matplotlib.pyplot as plt
 import geopandas as gpd
+import pandas as pd
 import networkx as nx
 import numpy as np
 
 def distance_matrix(geoPick: gpd.GeoDataFrame,geoDrop: gpd.GeoDataFrame):
+    """_summary_
+    Generate matrix with distance in cross list pickPoints and dropPoints
+
+    Args:
+        geoPick (gpd.GeoDataFrame): Geographic dataFrame of pickup points
+        geoDrop (gpd.GeoDataFrame): Geographic dataFrame of dropoff points
+
+    Returns:
+        _type_: _description_
+    """
     gpick = geoPick.to_crs('EPSG:5234')
     gdrop = geoDrop.to_crs('EPSG:5234')
     pick_drop_origin = gpick.distance(gdrop)/1000
     pick_drop_origin = pick_drop_origin.to_list()
-    print(pick_drop_origin)
     pick_drop_not_origin = []
     pick_pick_origin = []
     drop_drop_origin = []
@@ -58,12 +68,12 @@ def refineZeroPoint(matrix):
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             if i!=j and matrix[i][j]==0:
-                matrix[i][j] = 0.00001
+                matrix[i][j] = np.float64(0.001)
 
 def cleanDropPick(matrix):
     r = 0
     for i in range(3):
-        matrix[i+1+r][i+r] = 0
+        matrix[i+1+r][i+r] = np.float64(0)
         r=r+1
     return matrix
 
@@ -74,10 +84,8 @@ def get_sub(x):
     res = x.maketrans(''.join(normal), ''.join(sub_s)) 
     return x.translate(res)
 
-def graph_points_net(g_pick,g_drop,spring=False):
-    ady_graph = graph_points_matrix(g_pick,g_drop)
-    refineZeroPoint(ady_graph)
-    ady_graph = cleanDropPick(ady_graph)
+def graph_points_net(g_pick,g_drop,spring=False,other=True):
+    ady_graph = getMatrix(g_pick,g_drop)
     point_graph = nx.from_numpy_matrix(ady_graph, create_using=nx.DiGraph())
     label_mapping = {
         0: f'pick{get_sub(1)}', 
@@ -101,9 +109,10 @@ def graph_points_net(g_pick,g_drop,spring=False):
     point_graph = nx.relabel_nodes(point_graph, label_mapping)
     labels = nx.get_edge_attributes(point_graph, "weight")
     if spring:
-        pos = nx.spring_layout(point_graph,scale=100)
+        pos = nx.spring_layout(point_graph,scale=200)
     else:
         pos = nx.circular_layout(point_graph,scale=10)
+    
 
     fig, ax = plt.subplots(figsize=(15, 14))
     options = {"edgecolors": "tab:gray", "node_size": 4000, "alpha": 0.9}
@@ -111,8 +120,8 @@ def graph_points_net(g_pick,g_drop,spring=False):
     nx.draw_networkx_nodes(point_graph, pos, nodelist=pick_label, node_color="tab:green", **options)
     nx.draw_networkx_nodes(point_graph, pos, nodelist=drop_label, node_color="tab:red", **options)
     nx.draw_networkx_edges(point_graph,pos = pos, width=2, alpha=0.5)
-    nx.draw_networkx_edge_labels(point_graph,pos = pos,edge_labels=labels,font_size=13)
-    nx.draw_networkx_labels(point_graph, pos, font_size=20, font_color="whitesmoke")
+    nx.draw_networkx_edge_labels(point_graph,pos = pos,edge_labels=labels,font_size=12)
+    nx.draw_networkx_labels(point_graph, pos, font_size=15, font_color="whitesmoke")
     plt.show()
 
 def get_graph_mat(g_pick,g_drop):
@@ -123,7 +132,15 @@ def get_graph_mat(g_pick,g_drop):
         #print("drop")
         coords.append([g_drop['geometry'][i].x,g_drop['geometry'][i].y])            
     dist_mat = graph_points_matrix(g_pick,g_drop)
+    refineZeroPoint(dist_mat)
+    dist_mat = cleanDropPick(dist_mat)
     return np.array(coords), dist_mat
+
+def get_graph_data_frame(g_pick,g_drop):
+    ady_graph = graph_points_matrix(g_pick,g_drop)
+    refineZeroPoint(ady_graph)
+    ady_graph = cleanDropPick(ady_graph)
+    return pd.DataFrame(ady_graph)
 
 def graph_points_matrix_sec(g_pick,g_drop,sol):
     matrix_graph = graph_points_matrix(g_pick,g_drop)
@@ -146,7 +163,13 @@ def solutionGraph(sol=[],ady_graph=[]):
                 ady_graph[j][i]=0
     return ady_graph
 
-def graph_points_net(g_pick,g_drop,sol=[],spring=False):
+def getMatrix(g_pick,g_drop):
+    ady_graph = graph_points_matrix(g_pick,g_drop)
+    refineZeroPoint(ady_graph)
+    ady_graph = cleanDropPick(ady_graph)
+    return ady_graph
+
+def graph_points_net_sec(g_pick,g_drop,sol=[],spring=False):
     ady_graph = graph_points_matrix_sec(g_pick,g_drop,sol)    
     #solutionGraph2(sol,ady_graph)
     point_graph = nx.from_numpy_matrix(ady_graph, create_using=nx.DiGraph())
@@ -176,7 +199,7 @@ def graph_points_net(g_pick,g_drop,sol=[],spring=False):
     else:
         pos = nx.circular_layout(point_graph,scale=10)
 
-    fig, ax = plt.subplots(figsize=(15, 14))
+    fig, ax = plt.subplots(figsize=(12, 12))
     options = {"edgecolors": "tab:gray", "node_size": 4000, "alpha": 0.9}
     nx.draw(point_graph,pos=pos,**options,arrowsize=20)
     nx.draw_networkx_nodes(point_graph, pos, nodelist=pick_label, node_color="tab:green", **options)
