@@ -4,5 +4,14 @@
 # Cache python
 __pycache__
 
+# Runs
+models
+runs
+
+# vscode
+.vscode
+
 # Csv
-csv
+csv/
+cache/
+runs/
