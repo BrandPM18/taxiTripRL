@@ -208,3 +208,41 @@ def graph_points_net_sec(g_pick,g_drop,sol=[],spring=False):
     nx.draw_networkx_edge_labels(point_graph,pos = pos,edge_labels=labels,font_size=13)
     nx.draw_networkx_labels(point_graph, pos, font_size=20, font_color="whitesmoke")
     plt.show()
+
+    
+def plot_graph(G,spring=False):
+    label_mapping = {
+        0: f'pick{get_sub(1)}', 
+        1: f'drop{get_sub(1)}', 
+        2: f'pick{get_sub(2)}',
+        3: f'drop{get_sub(2)}',
+        4: f'pick{get_sub(3)}',
+        5: f'drop{get_sub(3)}'
+    }
+    pick_label = [
+        f'pick{get_sub(1)}',
+        f'pick{get_sub(2)}',
+        f'pick{get_sub(3)}'
+    ]
+
+    drop_label = [
+        f'drop{get_sub(1)}',
+        f'drop{get_sub(2)}',
+        f'drop{get_sub(3)}'
+    ]
+    point_graph = nx.relabel_nodes(G, label_mapping)
+    labels = nx.get_edge_attributes(point_graph, "weight")
+    if spring:
+        pos = nx.spring_layout(point_graph,scale=100)
+    else:
+        pos = nx.circular_layout(point_graph,scale=10)
+    
+    fig, ax = plt.subplots(figsize=(15, 14))
+    options = {"edgecolors": "tab:gray", "node_size": 4000, "alpha": 0.9}
+    nx.draw(point_graph,pos=pos,**options,arrowsize=20)
+    nx.draw_networkx_nodes(point_graph, pos, nodelist=pick_label, node_color="tab:green", **options)
+    nx.draw_networkx_nodes(point_graph, pos, nodelist=drop_label, node_color="tab:red", **options)
+    nx.draw_networkx_edges(point_graph,pos = pos, width=2, alpha=0.5)
+    nx.draw_networkx_edge_labels(point_graph,pos = pos,edge_labels=labels,font_size=12)
+    nx.draw_networkx_labels(point_graph, pos, font_size=15, font_color="whitesmoke")
+    return plt.show()
